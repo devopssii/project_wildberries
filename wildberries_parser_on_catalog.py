@@ -88,7 +88,7 @@ def get_data_from_json(json_file):
             price = int(data["priceU"] / 100)
         except:
             price = 0
-                data_list.append({
+        data_list.append({
             'Наименование': data['name'],
             'id': data['id'],
             'Скидка': data['sale'],
@@ -96,12 +96,11 @@ def get_data_from_json(json_file):
             'Цена со скидкой': int(data["salePriceU"] / 100),
             'Бренд': data['brand'],
             'id бренда': int(data['brandId']),
-            'Количество отзывов': data['feedbacks'],
-            'Рейтинг': data['rating'],
+            'feedbacks': data['feedbacks'],
+            'rating': data['rating'],
             'Рейтинг по отзывам': data['reviewRating'],
-            'Текст Промо':data['promoTextCard'],
-            'Объем продаж штук':data['volume'], 
-            'Цвет':data['colors',
+            'Объем продаж штук': data['volume'],
+            'Цвет': data['colors'],
             'Ссылка': f'https://www.wildberries.ru/catalog/{data["id"]}/detail.aspx?targetUrl=BP'
         })
     return data_list
