@@ -91,16 +91,16 @@ def get_data_from_json(json_file):
         data_list.append({
             'Наименование': data['name'],
             'id': data['id'],
-            'Скидка': data['sale'],
+            'Скидка в %': data['sale'],
             'Цена': price,
             'Цена со скидкой': int(data["salePriceU"] / 100),
             'Бренд': data['brand'],
             'id бренда': int(data['brandId']),
-            'feedbacks': data['feedbacks'],
-            'rating': data['rating'],
+            'Колличество отзывов': data['feedbacks'],
+            'Рейтинг': data['rating'],
             'Рейтинг по отзывам': data['reviewRating'],
             'Объем продаж штук': data['volume'],
-            'Цвет': data['colors'],
+            'Цвет': data['colors'][0]['name'] if data['colors'] else None,
             'Ссылка': f'https://www.wildberries.ru/catalog/{data["id"]}/detail.aspx?targetUrl=BP'
         })
     return data_list
