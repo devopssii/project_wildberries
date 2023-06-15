@@ -99,11 +99,13 @@ def get_data_from_json(json_file):
             'Колличество отзывов': data['feedbacks'],
             'Рейтинг': data['rating'],
             'Рейтинг по отзывам': data['reviewRating'],
-            'Объем продаж штук': data['volume'],
+            'Размер': data['sizes'][0]['name'] if data['sizes'] else None,
+            'Размер производителя': data['sizes'][0]['origName'] if data['sizes'] else None, 
             'Цвет': data['colors'][0]['name'] if data['colors'] else None,
             'Ссылка': f'https://www.wildberries.ru/catalog/{data["id"]}/detail.aspx?targetUrl=BP'
         })
     return data_list
+
 
 
 def get_content(shard, query, low_price=None, top_price=None):
