@@ -1,7 +1,7 @@
 import requests
 import json
 import pandas as pd
-
+import threading
 
 """
 Парсер wildberries по ссылке на каталог (указывать без фильтров)
@@ -79,7 +79,6 @@ def search_category_in_catalog(url, catalog_list):
     except:
         print('Данный раздел не найден!')
 
-
 def get_data_from_json(json_file):
     """извлекаем из json интересующие нас данные"""
     data_list = []
@@ -89,7 +88,12 @@ def get_data_from_json(json_file):
         except:
             price = 0
 
-        data_list.append({
+        size = data['sizes'][0]['name'] if data.get('sizes') and data['sizes'] and data['sizes'][0].get('name') else None
+        orig_size = data['sizes'][0]['origName'] if data.get('sizes') and data['sizes'] and data['sizes'][0].get('origName') else None
+        color = data['colors'][0]['name'] if data.get('colors') and data['colors'] else None
+        qty = data['sizes'][0]['stocks'][0]['qty'] if data.get('sizes') and data['sizes'] and data['sizes'][0].get('stocks') and data['sizes'][0]['stocks'] and data['sizes'][0]['stocks'][0].get('qty') else None
+
+        item = {
             'Наименование': data['name'],
             'id': data['id'],
             'Скидка в %': data['sale'],
@@ -100,29 +104,27 @@ def get_data_from_json(json_file):
             'Количество отзывов': data['feedbacks'],
             'Рейтинг': data['rating'],
             'Рейтинг по отзывам': data['reviewRating'],
-            'Размер': data['sizes'][0]['name'] if data['sizes'] else None,
-            'Размер производителя': data['sizes'][0]['origName'] if data['sizes'] else None, 
-            'Цвет': data['colors'][0]['name'] if data['colors'] else None,
-            'Количество на складе': data['sizes'][0]['stocks'][0]['qty'] if 'sizes' in data and isinstance(data['sizes'], list) and len(data['sizes']) > 0 and 'stocks' in data['sizes'][0] and isinstance(data['sizes'][0]['stocks'], list) and len(data['sizes'][0]['stocks']) > 0 and 'qty' in data['sizes'][0]['stocks'][0] else None,
+            'Размер': size,
+            'Размер производителя': orig_size,
+            'Цвет': color,
+            'Количество на складе': qty,
             'Ссылка': f'https://www.wildberries.ru/catalog/{data["id"]}/detail.aspx?targetUrl=BP'
-        })
+        }
+
+        data_list.append(item)
+
     return data_list
 
-
-
 def get_content(shard, query, low_price=None, top_price=None):
-    # вставляем ценовые рамки для уменьшения выдачи, вилбериес отдает только 100 страниц
     headers = {'Accept': "*/*", 'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
     data_list = []
-    for page in range(1, 101):
+
+    def process_page(page):
         print(f'Сбор позиций со страницы {page} из 100')
-        # url = f'https://wbxcatalog-ru.wildberries.ru/{shard}' \
-        #       f'/catalog?appType=1&curr=rub&dest=-1029256,-102269,-1278703,-1255563' \
-        #       f'&{query}&lang=ru&locale=ru&sort=sale&page={page}' \
-        #       f'&priceU={low_price * 100};{top_price * 100}'
         url = f'https://catalog.wb.ru/catalog/{shard}/catalog?appType=1&curr=rub&dest=-1075831,-77677,-398551,12358499' \
               f'&locale=ru&page={page}&priceU={low_price * 100};{top_price * 100}' \
               f'&reg=0&regions=64,83,4,38,80,33,70,82,86,30,69,1,48,22,66,31,40&sort=popular&spp=0&{query}'
+
         r = requests.get(url, headers=headers)
         data = r.json()
         print(f'Добавлено позиций: {len(get_data_from_json(data))}')
@@ -130,7 +132,28 @@ def get_content(shard, query, low_price=None, top_price=None):
             data_list.extend(get_data_from_json(data))
         else:
             print(f'Сбор данных завершен.')
-            break
+
+        # Получение данных о количестве продаж
+        for item in data_list:
+            nm_id = item['id']
+            url = f'https://product-order-qnt.wildberries.ru/by-nm/?nm={nm_id}'
+            qnt_data = requests.get(url).json()
+
+            if qnt_data:
+                item['Количество продаж'] = qnt_data[0]['qnt']
+            else:
+                item['Количество продаж'] = None
+            print(item['Количество продаж'])
+    # Многопоточный сбор данных со страниц
+    threads = []
+    for page in range(1, 101):
+        t = threading.Thread(target=process_page, args=(page,))
+        threads.append(t)
+        t.start()
+
+    for thread in threads:
+        thread.join()
+
     return data_list
 
 
@@ -166,10 +189,9 @@ if __name__ == '__main__':
     # top_price = int(input('Введите максимульную сумму товара: '))
 
     """данные для теста. собераем товар с раздела велосипеды в ценовой категории от 50тыс, до 100тыс"""
-    url = 'https://www.wildberries.ru/catalog/sport/vidy-sporta/velosport/velosipedy'
-    url = 'https://www.wildberries.ru/catalog/elektronika/noutbuki-pereferiya/periferiynye-ustroystva/mfu'
-    url = 'https://www.wildberries.ru/catalog/dlya-doma/predmety-interera/dekorativnye-nakleyki'
-    low_price = 5000
+    url = 'https://www.wildberries.ru/catalog/obuv/muzhskaya/kedy-i-krossovki'
+    url = 'https://www.wildberries.ru/catalog/obuv/zhenskaya/kedy-i-krossovki'
+    low_price = 300
     top_price = 100000
 
     parser(url, low_price, top_price)
